@@ -186,6 +186,8 @@ export interface ParseResult {
     names: string[];
     isDefault: boolean;
     isNamespace: boolean;
+    /** True if this is a re-export (export { X } from 'module') */
+    isReexport?: boolean;
   }[];
   
   /** Any parsing errors */
