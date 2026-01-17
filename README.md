@@ -1,5 +1,7 @@
 # CodeFlow - Visual Component Map for VS Code
 
+[![CI](https://github.com/QUXTech/codeflow-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/QUXTech/codeflow-extension/actions/workflows/ci.yml)
+
 **Visualize your codebase as an interactive component diagram. Navigate, understand, and orchestrate code edits with AI assistance.**
 
 ![CodeFlow Demo](media/demo.gif)
