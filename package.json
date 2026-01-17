@@ -1,0 +1,167 @@
+{
+  "name": "codeflow",
+  "displayName": "CodeFlow - Visual Component Map",
+  "description": "Visualize your codebase as an interactive component diagram. Navigate, understand, and orchestrate code edits with AI assistance.",
+  "version": "0.1.0",
+  "publisher": "your-publisher-name",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "component",
+    "diagram",
+    "mermaid",
+    "visualization",
+    "architecture",
+    "code map",
+    "dependency graph",
+    "claude",
+    "claude-cli"
+  ],
+  "activationEvents": [
+    "onCommand:codeflow.generateMap",
+    "onCommand:codeflow.openPanel",
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codeflow.generateMap",
+        "title": "CodeFlow: Generate Component Map"
+      },
+      {
+        "command": "codeflow.openPanel",
+        "title": "CodeFlow: Open Visualization Panel"
+      },
+      {
+        "command": "codeflow.refreshMap",
+        "title": "CodeFlow: Refresh Component Map"
+      },
+      {
+        "command": "codeflow.toggleClaudeMode",
+        "title": "CodeFlow: Toggle Claude Orchestration Mode"
+      },
+      {
+        "command": "codeflow.approveEdit",
+        "title": "CodeFlow: Approve Current Edit (Yes)"
+      },
+      {
+        "command": "codeflow.denyEdit",
+        "title": "CodeFlow: Deny Current Edit (No)"
+      },
+      {
+        "command": "codeflow.toggleAutoApprove",
+        "title": "CodeFlow: Toggle Auto-Approve Mode"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "codeflow.approveEdit",
+        "key": "ctrl+shift+y",
+        "mac": "cmd+shift+y",
+        "when": "codeflow.hasPendingApproval"
+      },
+      {
+        "command": "codeflow.denyEdit",
+        "key": "ctrl+shift+n",
+        "mac": "cmd+shift+n",
+        "when": "codeflow.hasPendingApproval"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "codeflow",
+          "title": "CodeFlow",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "codeflow": [
+        {
+          "type": "webview",
+          "id": "codeflow.visualizer",
+          "name": "Component Map"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "CodeFlow",
+      "properties": {
+        "codeflow.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically refresh the component map when files change"
+        },
+        "codeflow.excludePatterns": {
+          "type": "array",
+          "default": [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/.git/**"
+          ],
+          "description": "Glob patterns to exclude from component scanning"
+        },
+        "codeflow.maxDepth": {
+          "type": "number",
+          "default": 5,
+          "description": "Maximum depth for dependency traversal"
+        },
+        "codeflow.claudeApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Anthropic API key for Claude integration (optional)"
+        },
+        "codeflow.autoApproveEdits": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically approve all Claude CLI edit requests (use with caution)"
+        },
+        "codeflow.autoApprovePatterns": {
+          "type": "array",
+          "default": [],
+          "description": "File patterns to auto-approve (e.g., ['src/**/*.ts', 'tests/**']). Empty means all files when auto-approve is on."
+        },
+        "codeflow.terminalName": {
+          "type": "string",
+          "default": "claude",
+          "description": "Name of the terminal running Claude CLI to monitor"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/vsce": "^2.22.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "glob": "^10.3.10",
+    "mermaid": "^11.12.2",
+    "minimatch": "^10.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/codeflow"
+  },
+  "license": "MIT"
+}
