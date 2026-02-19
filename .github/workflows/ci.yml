@@ -24,10 +24,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+
+      - name: Clean npm cache
+        run: npm cache clean --force
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit
+        env:
+          npm_config_loglevel: warn
 
       - name: Run linter
         run: npm run lint
@@ -53,10 +57,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+
+      - name: Clean npm cache
+        run: npm cache clean --force
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit
+        env:
+          npm_config_loglevel: warn
 
       - name: Run security audit
         run: npm audit --audit-level=high
@@ -74,10 +82,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+
+      - name: Clean npm cache
+        run: npm cache clean --force
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit
+        env:
+          npm_config_loglevel: warn
 
       - name: Package extension
         run: npm run package
