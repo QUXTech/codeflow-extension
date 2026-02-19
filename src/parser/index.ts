@@ -124,8 +124,6 @@ export async function discoverFolders(
     'bin', 'obj', '.next', '.nuxt', 'coverage', '.cache', '.idea', '.vscode'
   ];
 
-  const folders: FolderSelection[] = [];
-
   async function scanDirectory(dirPath: string, depth: number): Promise<FolderSelection[]> {
     if (depth > maxDepth) {
       return [];

@@ -1248,7 +1248,7 @@ async function handleOpenFolderPicker(): Promise<void> {
 
     // Select the chosen folders
     const selectedPaths = new Set(selected.map(s => s.folder.path));
-    function markSelected(folders: FolderSelection[]): void {
+    const markSelected = (folders: FolderSelection[]): void => {
       for (const folder of folders) {
         if (selectedPaths.has(folder.path)) {
           folder.selected = true;
@@ -1257,7 +1257,7 @@ async function handleOpenFolderPicker(): Promise<void> {
           markSelected(folder.children);
         }
       }
-    }
+    };
     markSelected(folderSelections);
 
     // Update panel with new selection state

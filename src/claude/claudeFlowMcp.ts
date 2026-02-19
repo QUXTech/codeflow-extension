@@ -51,7 +51,7 @@ export class ClaudeFlowMcp {
   /**
    * Initialize Claude Flow MCP connection
    */
-  async initialize(context: vscode.ExtensionContext): Promise<boolean> {
+  async initialize(_context: vscode.ExtensionContext): Promise<boolean> {
     try {
       // Check if claude-flow is available
       const { stdout } = await execAsync('npx claude-flow --version');
