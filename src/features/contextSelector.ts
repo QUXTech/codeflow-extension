@@ -244,7 +244,7 @@ export class ContextSelector {
       try {
         const content = await fs.promises.readFile(file.filePath, 'utf-8');
         contents.push(`// File: ${file.relativePath}\n${content}`);
-      } catch (error) {
+      } catch {
         contents.push(`// File: ${file.relativePath}\n// Error reading file`);
       }
     }

@@ -258,7 +258,7 @@ export class BookmarksManager {
           vscode.TextEditorRevealType.InCenter
         );
       }
-    } catch (error) {
+    } catch {
       vscode.window.showErrorMessage(`CodeFlow: Failed to open ${bookmark.fileName}`);
     }
   }

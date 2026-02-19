@@ -89,7 +89,7 @@ function parseCSharpClasses(
   components: Omit<ComponentNode, 'editStatus'>[]
 ): void {
   // Match class definitions with modifiers
-  const classRegex = /(?:public|private|protected|internal|abstract|sealed|static|partial|\s)+class\s+(\w+)(?:<[^>]+>)?(?:\s*:\s*([^\{]+))?\s*\{/g;
+  const classRegex = /(?:public|private|protected|internal|abstract|sealed|static|partial|\s)+class\s+(\w+)(?:<[^>]+>)?(?:\s*:\s*([^{]+))?\s*{/g;
   let match;
 
   while ((match = classRegex.exec(content)) !== null) {
@@ -122,7 +122,7 @@ function parseCSharpInterfaces(
   namespace: string | undefined,
   components: Omit<ComponentNode, 'editStatus'>[]
 ): void {
-  const interfaceRegex = /(?:public|private|protected|internal|\s)+interface\s+(I\w+)(?:<[^>]+>)?(?:\s*:\s*([^\{]+))?\s*\{/g;
+  const interfaceRegex = /(?:public|private|protected|internal|\s)+interface\s+(I\w+)(?:<[^>]+>)?(?:\s*:\s*([^{]+))?\s*{/g;
   let match;
 
   while ((match = interfaceRegex.exec(content)) !== null) {

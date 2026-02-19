@@ -122,7 +122,7 @@ export class UndoManager {
     try {
       const document = await vscode.workspace.openTextDocument(filePath);
       this.fileSnapshots.set(filePath, document.getText());
-    } catch (error) {
+    } catch {
       // File might not exist yet
     }
   }
