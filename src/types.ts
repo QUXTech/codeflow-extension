@@ -139,7 +139,8 @@ export interface EditPlan {
 export interface ExtensionMessage {
   type: 'graphUpdate' | 'statusUpdate' | 'editPlanUpdate' | 'error' | 'settings'
     | 'activityUpdate' | 'autoApproveUpdate' | 'undoHistoryUpdate' | 'contextFilesUpdate'
-    | 'pendingDiffsUpdate' | 'sessionInfoUpdate' | 'costSummaryUpdate' | 'bookmarksUpdate';
+    | 'pendingDiffsUpdate' | 'sessionInfoUpdate' | 'costSummaryUpdate' | 'bookmarksUpdate'
+    | 'claudeFlowTaskUpdate' | 'selectedComponentsUpdate' | 'folderSelectionUpdate';
   payload: unknown;
 }
 
@@ -153,8 +154,25 @@ export interface WebviewMessage {
     | 'showDiff' | 'approveDiff' | 'denyDiff'
     | 'addBookmark' | 'removeBookmark' | 'goToBookmark' | 'toggleBookmarkPin'
     | 'showSessionHistory' | 'exportSessionLog'
-    | 'showCostSummary' | 'resetCostTracker';
+    | 'showCostSummary' | 'resetCostTracker'
+    | 'toggleFolder' | 'selectAllFolders' | 'deselectAllFolders' | 'refreshFolders' | 'openFolderPicker';
   payload: unknown;
+}
+
+/** Folder selection state for component map filtering */
+export interface FolderSelection {
+  /** Relative path from workspace root */
+  path: string;
+  /** Display name (last segment of path) */
+  name: string;
+  /** Whether this folder is selected for scanning */
+  selected: boolean;
+  /** Depth level from root (0 = top-level) */
+  depth: number;
+  /** Whether this folder has subfolders */
+  hasChildren: boolean;
+  /** Child folders (if expanded) */
+  children?: FolderSelection[];
 }
 
 /** Mermaid diagram configuration */

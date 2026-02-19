@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ComponentGraph, EditPlan, WebviewMessage, ExtensionMessage } from '../types';
+import { ComponentGraph, EditPlan, WebviewMessage, ExtensionMessage, FolderSelection } from '../types';
 
 /**
  * Manages the CodeFlow visualization panel
@@ -204,6 +204,43 @@ export class CodeFlowPanel {
     this.postMessage({
       type: 'bookmarksUpdate',
       payload: bookmarks
+    });
+  }
+
+  /**
+   * Update Claude Flow task status
+   */
+  updateClaudeFlowTask(task: {
+    taskId: string;
+    componentIds: string[];
+    description: string;
+    status: string;
+    progress: number;
+    currentComponent: string | null;
+  }): void {
+    this.postMessage({
+      type: 'claudeFlowTaskUpdate',
+      payload: task
+    });
+  }
+
+  /**
+   * Update selected components for editing
+   */
+  updateSelectedComponents(componentIds: string[]): void {
+    this.postMessage({
+      type: 'selectedComponentsUpdate',
+      payload: { componentIds }
+    });
+  }
+
+  /**
+   * Update folder selection state
+   */
+  updateFolderSelection(folders: FolderSelection[]): void {
+    this.postMessage({
+      type: 'folderSelectionUpdate',
+      payload: { folders }
     });
   }
 
@@ -976,6 +1013,118 @@ export class CodeFlowPanel {
     .sidebar-tab-content.active {
       display: block;
     }
+
+    /* Folder selector styles */
+    .folder-selector {
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+    }
+
+    .folder-selector-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .folder-selector-header:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .folder-selector-content {
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 4px 8px;
+    }
+
+    .folder-selector-content.collapsed {
+      display: none;
+    }
+
+    .folder-selector-actions {
+      display: flex;
+      gap: 4px;
+      padding: 4px 8px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .folder-selector-actions button {
+      flex: 1;
+      padding: 4px 8px;
+      font-size: 10px;
+    }
+
+    .folder-tree {
+      list-style: none;
+    }
+
+    .folder-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      margin: 2px 0;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .folder-item:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .folder-checkbox {
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
+      accent-color: var(--accent-color);
+    }
+
+    .folder-icon {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    .folder-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .folder-path {
+      font-size: 9px;
+      color: var(--text-secondary);
+      opacity: 0.7;
+    }
+
+    .folder-children {
+      margin-left: 16px;
+      border-left: 1px dashed var(--border-color);
+      padding-left: 4px;
+    }
+
+    .folder-item.unselected {
+      opacity: 0.5;
+    }
+
+    .folder-summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      font-size: 10px;
+      color: var(--text-secondary);
+      border-top: 1px solid var(--border-color);
+    }
+
+    .folder-count {
+      font-weight: 600;
+      color: var(--accent-color);
+    }
   </style>
 </head>
 <body>
@@ -1015,6 +1164,33 @@ export class CodeFlowPanel {
 
       <!-- Main Tab -->
       <div class="sidebar-tab-content active" id="tab-main">
+        <!-- Folder Selector -->
+        <div class="folder-selector" id="folder-selector">
+          <div class="folder-selector-header" id="folder-selector-header">
+            <span>📁 Folder Selection</span>
+            <span id="folder-toggle-icon">▼</span>
+          </div>
+          <div class="folder-selector-content" id="folder-selector-content">
+            <div style="padding: 4px 8px; font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">
+              Select folders to include in the component map:
+            </div>
+            <ul class="folder-tree" id="folder-tree">
+              <li style="color: var(--text-secondary); font-style: italic; padding: 8px;">
+                Loading folders...
+              </li>
+            </ul>
+          </div>
+          <div class="folder-summary" id="folder-summary">
+            <span class="folder-count" id="selected-folder-count">0</span> folders selected
+          </div>
+          <div class="folder-selector-actions">
+            <button class="feature-item-btn" id="select-all-folders" title="Select all folders">All</button>
+            <button class="feature-item-btn" id="deselect-all-folders" title="Deselect all folders">None</button>
+            <button class="feature-item-btn" id="folder-picker-btn" title="Open folder picker dialog">📂</button>
+            <button class="feature-item-btn" id="rescan-folders-btn" title="Rescan with selected folders" style="background: var(--vscode-button-background);">🔄 Rescan</button>
+          </div>
+        </div>
+
         <!-- Auto-approve Panel -->
         <div class="auto-approve-panel" id="auto-approve-panel">
           <div class="auto-approve-header">
@@ -1263,6 +1439,17 @@ export class CodeFlowPanel {
     let selectedNodeId = null;
     let zoomLevel = 1;
 
+    // Security: HTML escape function to prevent XSS
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     // Elements
     const diagramContainer = document.getElementById('diagram-container');
     const mermaidDiagram = document.getElementById('mermaid-diagram');
@@ -1400,6 +1587,32 @@ export class CodeFlowPanel {
       vscode.postMessage({ type: 'exportSessionLog' });
     });
 
+    // Folder selector events
+    document.getElementById('folder-selector-header')?.addEventListener('click', () => {
+      const content = document.getElementById('folder-selector-content');
+      const icon = document.getElementById('folder-toggle-icon');
+      if (content && icon) {
+        content.classList.toggle('collapsed');
+        icon.textContent = content.classList.contains('collapsed') ? '▶' : '▼';
+      }
+    });
+
+    document.getElementById('select-all-folders')?.addEventListener('click', () => {
+      vscode.postMessage({ type: 'selectAllFolders' });
+    });
+
+    document.getElementById('deselect-all-folders')?.addEventListener('click', () => {
+      vscode.postMessage({ type: 'deselectAllFolders' });
+    });
+
+    document.getElementById('folder-picker-btn')?.addEventListener('click', () => {
+      vscode.postMessage({ type: 'openFolderPicker' });
+    });
+
+    document.getElementById('rescan-folders-btn')?.addEventListener('click', () => {
+      vscode.postMessage({ type: 'requestRefresh' });
+    });
+
     // Handle messages from extension
     window.addEventListener('message', event => {
       const message = event.data;
@@ -1434,6 +1647,9 @@ export class CodeFlowPanel {
           break;
         case 'bookmarksUpdate':
           handleBookmarksUpdate(message.payload);
+          break;
+        case 'folderSelectionUpdate':
+          handleFolderSelectionUpdate(message.payload);
           break;
         case 'error':
           showError(message.payload.message);
@@ -1479,7 +1695,7 @@ export class CodeFlowPanel {
         applyZoom();
       } catch (error) {
         console.error('Mermaid render error:', error);
-        mermaidDiagram.innerHTML = '<div class="error-message">Failed to render diagram: ' + error.message + '</div>';
+        mermaidDiagram.innerHTML = '<div class="error-message">Failed to render diagram: ' + escapeHtml(error.message) + '</div>';
       }
     }
 
@@ -1507,11 +1723,11 @@ export class CodeFlowPanel {
         nodes.forEach(node => {
           const li = document.createElement('li');
           li.className = 'component-item' + (node.id === selectedNodeId ? ' selected' : '');
-          li.innerHTML = 
-            '<div class="status-indicator status-' + node.editStatus + '"></div>' +
-            '<span class="component-type">' + node.type + '</span>' +
-            '<span class="component-name" title="' + node.filePath + '">' + node.name + '</span>';
-          
+          li.innerHTML =
+            '<div class="status-indicator status-' + escapeHtml(node.editStatus) + '"></div>' +
+            '<span class="component-type">' + escapeHtml(node.type) + '</span>' +
+            '<span class="component-name" title="' + escapeHtml(node.filePath) + '">' + escapeHtml(node.name) + '</span>';
+
           li.addEventListener('click', () => handleNodeClick(node.id));
           li.addEventListener('dblclick', () => {
             vscode.postMessage({ type: 'nodeClick', payload: { nodeId: node.id } });
@@ -1565,7 +1781,7 @@ export class CodeFlowPanel {
 
     function showError(message) {
       hideLoading();
-      mermaidDiagram.innerHTML = '<div class="error-message">' + message + '</div>';
+      mermaidDiagram.innerHTML = '<div class="error-message">' + escapeHtml(message) + '</div>';
       mermaidDiagram.classList.remove('hidden');
     }
 
@@ -1591,10 +1807,10 @@ export class CodeFlowPanel {
         const iconClass = item.type === 'start' ? 'editing' : '';
         const action = item.type === 'start' ? 'Editing' : 'Completed';
         
-        div.innerHTML = 
-          '<span class="activity-icon ' + iconClass + '">' + icon + '</span>' +
-          '<span class="activity-name">' + item.nodeName + '</span>' +
-          '<span class="activity-time">' + formatTime(item.timestamp) + '</span>';
+        div.innerHTML =
+          '<span class="activity-icon ' + escapeHtml(iconClass) + '">' + escapeHtml(icon) + '</span>' +
+          '<span class="activity-name">' + escapeHtml(item.nodeName) + '</span>' +
+          '<span class="activity-time">' + escapeHtml(formatTime(item.timestamp)) + '</span>';
         
         activityList.appendChild(div);
       });
@@ -1691,10 +1907,11 @@ export class CodeFlowPanel {
       undoable.slice(0, 10).forEach(item => {
         const li = document.createElement('li');
         li.className = 'feature-item undo-item';
-        li.innerHTML = 
-          '<span class="feature-item-name">' + item.fileName + '</span>' +
-          '<span class="feature-item-meta">' + formatTime(item.timestamp) + '</span>' +
-          '<button class="feature-item-btn" onclick="undoFile(\'' + item.filePath.replace(/'/g, "\\'") + '\')">Undo</button>';
+        li.innerHTML =
+          '<span class="feature-item-name">' + escapeHtml(item.fileName) + '</span>' +
+          '<span class="feature-item-meta">' + escapeHtml(formatTime(item.timestamp)) + '</span>' +
+          '<button class="feature-item-btn">Undo</button>';
+        li.querySelector('.feature-item-btn').addEventListener('click', () => undoFile(item.filePath));
         undoList.appendChild(li);
       });
     }
@@ -1716,16 +1933,17 @@ export class CodeFlowPanel {
       }
       
       const totalTokens = files.reduce((sum, f) => sum + f.tokenEstimate, 0);
-      contextSummary.innerHTML = '<span>' + files.length + ' files</span><span>~' + Math.round(totalTokens / 1000) + 'k tokens</span>';
-      
+      contextSummary.innerHTML = '<span>' + escapeHtml(files.length) + ' files</span><span>~' + escapeHtml(Math.round(totalTokens / 1000)) + 'k tokens</span>';
+
       contextList.innerHTML = '';
       files.forEach(file => {
         const li = document.createElement('li');
         li.className = 'feature-item context-item';
-        li.innerHTML = 
-          '<span class="feature-item-name" title="' + file.relativePath + '">' + file.fileName + '</span>' +
-          '<span class="feature-item-meta">~' + Math.round(file.tokenEstimate / 100) / 10 + 'k</span>' +
-          '<button class="feature-item-btn danger" onclick="removeFromContext(\'' + file.filePath.replace(/'/g, "\\'") + '\')">✕</button>';
+        li.innerHTML =
+          '<span class="feature-item-name" title="' + escapeHtml(file.relativePath) + '">' + escapeHtml(file.fileName) + '</span>' +
+          '<span class="feature-item-meta">~' + escapeHtml(Math.round(file.tokenEstimate / 100) / 10) + 'k</span>' +
+          '<button class="feature-item-btn danger">✕</button>';
+        li.querySelector('.feature-item-btn').addEventListener('click', () => removeFromContext(file.filePath));
         contextList.appendChild(li);
       });
     }
@@ -1751,17 +1969,20 @@ export class CodeFlowPanel {
       diffs.forEach(diff => {
         const li = document.createElement('li');
         li.className = 'feature-item diff-item';
-        li.innerHTML = 
-          '<span class="feature-item-name">' + diff.fileName + '</span>' +
+        li.innerHTML =
+          '<span class="feature-item-name">' + escapeHtml(diff.fileName) + '</span>' +
           '<div class="diff-stats">' +
-            '<span class="diff-add">+' + diff.additions + '</span>' +
-            '<span class="diff-del">-' + diff.deletions + '</span>' +
+            '<span class="diff-add">+' + escapeHtml(diff.additions) + '</span>' +
+            '<span class="diff-del">-' + escapeHtml(diff.deletions) + '</span>' +
           '</div>' +
           '<div class="feature-item-actions">' +
-            '<button class="feature-item-btn" onclick="showDiff(\'' + diff.filePath.replace(/'/g, "\\'") + '\')">View</button>' +
-            '<button class="feature-item-btn" onclick="approveDiff(\'' + diff.id + '\')">✓</button>' +
-            '<button class="feature-item-btn danger" onclick="denyDiff(\'' + diff.id + '\')">✕</button>' +
+            '<button class="feature-item-btn btn-view">View</button>' +
+            '<button class="feature-item-btn btn-approve">✓</button>' +
+            '<button class="feature-item-btn danger btn-deny">✕</button>' +
           '</div>';
+        li.querySelector('.btn-view').addEventListener('click', () => showDiff(diff.filePath));
+        li.querySelector('.btn-approve').addEventListener('click', () => approveDiff(diff.id));
+        li.querySelector('.btn-deny').addEventListener('click', () => denyDiff(diff.id));
         diffList.appendChild(li);
       });
     }
@@ -1798,9 +2019,9 @@ export class CodeFlowPanel {
       actions.slice(0, 20).forEach(action => {
         const li = document.createElement('li');
         li.className = 'feature-item';
-        li.innerHTML = 
-          '<span class="feature-item-name">' + action.description + '</span>' +
-          '<span class="feature-item-meta">' + formatTime(action.timestamp) + '</span>';
+        li.innerHTML =
+          '<span class="feature-item-name">' + escapeHtml(action.description) + '</span>' +
+          '<span class="feature-item-meta">' + escapeHtml(formatTime(action.timestamp)) + '</span>';
         actionLog.appendChild(li);
       });
     }
@@ -1827,15 +2048,17 @@ export class CodeFlowPanel {
       bookmarks.forEach(bookmark => {
         const li = document.createElement('li');
         li.className = 'feature-item bookmark-item';
-        li.innerHTML = 
-          '<div class="bookmark-color" style="background: ' + getBookmarkColor(bookmark.color) + '"></div>' +
+        li.innerHTML =
+          '<div class="bookmark-color" style="background: ' + escapeHtml(getBookmarkColor(bookmark.color)) + '"></div>' +
           (bookmark.isPinned ? '<span class="bookmark-pin">📌</span>' : '') +
-          '<span class="feature-item-name" title="' + (bookmark.note || '') + '">' + bookmark.name + '</span>' +
-          '<span class="feature-item-meta">' + bookmark.fileName + '</span>' +
+          '<span class="feature-item-name" title="' + escapeHtml(bookmark.note || '') + '">' + escapeHtml(bookmark.name) + '</span>' +
+          '<span class="feature-item-meta">' + escapeHtml(bookmark.fileName) + '</span>' +
           '<div class="feature-item-actions">' +
-            '<button class="feature-item-btn" onclick="goToBookmark(\'' + bookmark.id + '\')">Go</button>' +
-            '<button class="feature-item-btn danger" onclick="removeBookmark(\'' + bookmark.id + '\')">✕</button>' +
+            '<button class="feature-item-btn btn-go">Go</button>' +
+            '<button class="feature-item-btn danger btn-remove">✕</button>' +
           '</div>';
+        li.querySelector('.btn-go').addEventListener('click', () => goToBookmark(bookmark.id));
+        li.querySelector('.btn-remove').addEventListener('click', () => removeBookmark(bookmark.id));
         li.addEventListener('dblclick', () => goToBookmark(bookmark.id));
         bookmarkList.appendChild(li);
       });
@@ -1860,6 +2083,101 @@ export class CodeFlowPanel {
 
     function removeBookmark(bookmarkId) {
       vscode.postMessage({ type: 'removeBookmark', payload: { bookmarkId } });
+    }
+
+    // Folder selection handling
+    let currentFolders = [];
+
+    function handleFolderSelectionUpdate(payload) {
+      currentFolders = payload.folders || [];
+      renderFolderTree();
+      updateFolderCount();
+    }
+
+    function renderFolderTree() {
+      const folderTree = document.getElementById('folder-tree');
+      if (!folderTree) return;
+
+      if (currentFolders.length === 0) {
+        folderTree.innerHTML = '<li style="color: var(--text-secondary); font-style: italic; padding: 8px;">No folders found with code files</li>';
+        return;
+      }
+
+      folderTree.innerHTML = '';
+      renderFolderItems(currentFolders, folderTree);
+    }
+
+    function renderFolderItems(folders, container) {
+      for (const folder of folders) {
+        const li = document.createElement('li');
+
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'folder-item' + (folder.selected ? '' : ' unselected');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'folder-checkbox';
+        checkbox.checked = folder.selected;
+        checkbox.addEventListener('change', (e) => {
+          e.stopPropagation();
+          toggleFolder(folder.path, checkbox.checked);
+        });
+
+        const icon = document.createElement('span');
+        icon.className = 'folder-icon';
+        icon.textContent = folder.hasChildren ? '📂' : '📁';
+
+        const name = document.createElement('span');
+        name.className = 'folder-name';
+        name.textContent = folder.name;
+        name.title = folder.path;
+
+        itemDiv.appendChild(checkbox);
+        itemDiv.appendChild(icon);
+        itemDiv.appendChild(name);
+
+        // Click on the item (not checkbox) also toggles
+        itemDiv.addEventListener('click', (e) => {
+          if (e.target !== checkbox) {
+            checkbox.checked = !checkbox.checked;
+            toggleFolder(folder.path, checkbox.checked);
+          }
+        });
+
+        li.appendChild(itemDiv);
+
+        // Render children if present
+        if (folder.children && folder.children.length > 0) {
+          const childrenUl = document.createElement('ul');
+          childrenUl.className = 'folder-children';
+          renderFolderItems(folder.children, childrenUl);
+          li.appendChild(childrenUl);
+        }
+
+        container.appendChild(li);
+      }
+    }
+
+    function toggleFolder(path, selected) {
+      vscode.postMessage({
+        type: 'toggleFolder',
+        payload: { path, selected }
+      });
+    }
+
+    function updateFolderCount() {
+      const countEl = document.getElementById('selected-folder-count');
+      if (!countEl) return;
+
+      let count = 0;
+      function countSelected(folders) {
+        for (const folder of folders) {
+          if (folder.selected) count++;
+          if (folder.children) countSelected(folder.children);
+        }
+      }
+      countSelected(currentFolders);
+      countEl.textContent = count.toString();
     }
   </script>
 </body>

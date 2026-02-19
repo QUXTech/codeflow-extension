@@ -3,7 +3,7 @@
   "displayName": "CodeFlow - Visual Component Map",
   "description": "Visualize your codebase as an interactive component diagram. Navigate, understand, and orchestrate code edits with AI assistance.",
   "version": "0.1.0",
-  "publisher": "your-publisher-name",
+  "publisher": "quxtech",
   "engines": {
     "vscode": "^1.85.0"
   },
